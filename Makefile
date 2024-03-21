@@ -1,5 +1,5 @@
 PROG = project03
-OBJS = project03.o rv_emu.o cache.o verbose.o\
+OBJS = project03.o rv_emu.o bits.o cache.o verbose.o\
 	   quadratic_c.o quadratic_s.o\
 	   midpoint_c.o midpoint_s.o\
 	   max3_c.o max3_s.o\
@@ -11,7 +11,7 @@ OBJS = project03.o rv_emu.o cache.o verbose.o\
 	   sort_c.o sort_s.o\
 	   add2_c.o add2_s.o
 
-HEADERS = project03.h rv_emu.h
+HEADERS = project03.h rv_emu.h bits.h
 
 %.o: %.c $(HEADERS)
 	gcc -g -c -o $@ $<
