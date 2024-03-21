@@ -111,7 +111,8 @@ void emu_i_type (struct rv_state_st *rsp, uint32_t iw) {
     if (funct3 == 0b101 && funct7 == 0b0000000) {   //SRLI
         rsp->regs[rd] = rsp->regs[rs1] >> rs2;
     } else if (funct3 == 0b000){    //ADDI
-        int64_t imm = sign_extend(iw, 20);
+        uint64_t immu64 = get_bits(iw, 20, 11);
+        int64_t imm = sign_extend(immu64, 11);
         if(rs1==0){
             rsp->regs[rd] = imm;
         } else {
@@ -121,6 +122,28 @@ void emu_i_type (struct rv_state_st *rsp, uint32_t iw) {
         unsupported("I-type funct3", funct3);
     }
     rsp->pc += 4; // Next instruction
+}
+
+void emu_b_type(struct rv_state_st *rsp, uint32_t iw){
+    uint32_t rs1 = rv_get_rs1(iw);
+    uint32_t rs2 = rv_get_rs2(iw);
+    uint32_t funct3 = rv_get_funct3(iw);
+
+    uint64_t immu64 = (get_bit(iw, 31) << 12) | (get_bits(iw, 25, 6) << 5) | (get_bit(iw, 7) << 11) | (get_bits(iw, 8, 4) << 1);
+    int64_t imm = sign_extend(immu64, 12);  // Sign extend to 64 bits
+
+    int64_t rs1_val = (int64_t) rsp->regs[rs1];
+    int64_t rs2_val = (int64_t) rsp->regs[rs2];
+    
+    if ((funct3 == 0b100 && rs1_val < rs2_val) ||  //BLT
+        (funct3 == 0b001 && rs1_val != rs2_val) || //BNE
+        (funct3 == 0b101 && rs1_val >= rs2_val)) { //BGE
+            rsp->pc += imm;
+    } else if (funct3 == 0b100 || funct3 == 0b001 || funct3 == 0b101) {
+        rsp->pc += 4; // Next instruction
+    } else {
+        unsupported("B-type funct3", funct3);
+    }
 }
 
 static void rv_one(struct rv_state_st *rsp) {
@@ -144,6 +167,9 @@ static void rv_one(struct rv_state_st *rsp) {
             break;
         case FMT_I_ARITH:
             emu_i_type(rsp, iw);
+            break;
+        case FMT_B:
+            emu_b_type(rsp, iw);
             break;
         default:
             unsupported("Unknown opcode: ", opcode);
