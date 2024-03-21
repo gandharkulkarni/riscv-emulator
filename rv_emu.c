@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "rv_emu.h"
+#include "bits.h"
 
 #define DEBUG 0
 
@@ -48,15 +49,45 @@ void rv_init(struct rv_state_st *rsp, uint32_t *func,
     cache_init(&rsp->i_cache);
 }
 
+uint32_t rv_get_rd (uint32_t iw) {
+    return get_bits(iw, 7, 5);
+}
+
+uint32_t rv_get_rs1 (uint32_t iw) {
+    return get_bits(iw, 15, 5);
+}
+
+uint32_t rv_get_rs2 (uint32_t iw) {
+    return get_bits(iw, 20, 5);
+}
+
+uint32_t rv_get_funct3 (uint32_t iw) {
+    return get_bits(iw, 12, 3);
+}
+
+uint32_t rv_get_funct7 (uint32_t iw) {
+    return get_bits(iw, 25, 7);
+}
+
 void emu_r_type(struct rv_state_st *rsp, uint32_t iw) {
-    uint32_t rd = (iw >> 7) & 0b11111;
-    uint32_t rs1 = (iw >> 15) & 0b11111;
-    uint32_t rs2 = (iw >> 20) & 0b11111;
-    uint32_t funct3 = (iw >> 12) & 0b111;
-    uint32_t funct7 = (iw >> 25) & 0b1111111;
+    uint32_t rd = rv_get_rd(iw);
+    uint32_t rs1 = rv_get_rs1(iw);
+    uint32_t rs2 = rv_get_rs2(iw);
+    uint32_t funct3 = rv_get_funct3(iw);
+    uint32_t funct7 = rv_get_funct7(iw);
 
     if (funct3 == 0b000 && funct7 == 0b0000000) {
         rsp->regs[rd] = rsp->regs[rs1] + rsp->regs[rs2];
+    } else if (funct3 == 0b000 && funct7 == 0b0000001) {
+        rsp->regs[rd] = rsp->regs[rs1] * rsp->regs[rs2];
+    } else if (funct3 == 0b000 && funct7 == 0b0100000){
+        rsp->regs[rd] = rsp->regs[rs1] - rsp->regs[rs2];
+    } else if (funct3 == 0b001 && funct7 == 0b0000000) {
+        rsp->regs[rd] = rsp->regs[rs1] << rsp->regs[rs2];
+    } else if (funct3 == 0b101 && funct7 == 0b0000000) {
+        rsp->regs[rd] = rsp->regs[rs1] >> rsp->regs[rs2];
+    } else if (funct3 == 0b111 && funct7 ==0b0000000) {
+        rsp->regs[rd] = rsp->regs[rs1] & rsp->regs[rs2];
     } else {
         unsupported("R-type funct3", funct3);
     }
@@ -68,6 +99,28 @@ void emu_jalr(struct rv_state_st *rsp, uint32_t iw) {
     uint64_t val = rsp->regs[rs1];  // Value of regs[1]
 
     rsp->pc = val;  // PC = return address
+}
+
+void emu_i_type (struct rv_state_st *rsp, uint32_t iw) {
+    uint32_t rd = rv_get_rd(iw);
+    uint32_t rs1 = rv_get_rs1(iw);
+    uint32_t rs2 = rv_get_rs2(iw);
+    uint32_t funct3 = rv_get_funct3(iw);
+    uint32_t funct7 = rv_get_funct7(iw);
+
+    if (funct3 == 0b101 && funct7 == 0b0000000) {   //SRLI
+        rsp->regs[rd] = rsp->regs[rs1] >> rs2;
+    } else if (funct3 == 0b000){    //ADDI
+        int64_t imm = sign_extend(iw, 20);
+        if(rs1==0){
+            rsp->regs[rd] = imm;
+        } else {
+            rsp->regs[rd] = rsp->regs[rs1] + imm;
+        }
+    } else {
+        unsupported("I-type funct3", funct3);
+    }
+    rsp->pc += 4; // Next instruction
 }
 
 static void rv_one(struct rv_state_st *rsp) {
@@ -88,6 +141,9 @@ static void rv_one(struct rv_state_st *rsp) {
         case FMT_I_JALR:
             // JALR (aka RET) is a variant of I-type instructions
             emu_jalr(rsp, iw);
+            break;
+        case FMT_I_ARITH:
+            emu_i_type(rsp, iw);
             break;
         default:
             unsupported("Unknown opcode: ", opcode);
