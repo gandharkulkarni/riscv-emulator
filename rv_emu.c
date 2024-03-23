@@ -91,13 +91,20 @@ void emu_r_type(struct rv_state_st *rsp, uint32_t iw) {
     } else {
         unsupported("R-type funct3", funct3);
     }
+    if (rsp->analyze) {
+        rsp->analysis.i_count += 1;
+        rsp->analysis.ir_count += 1;
+    }
     rsp->pc += 4; // Next instruction
 }
 
 void emu_jalr (struct rv_state_st *rsp, uint32_t iw) {
     uint32_t rs1 = (iw >> 15) & 0b1111;  // Will be ra (aka x1)
     uint64_t val = rsp->regs[rs1];  // Value of regs[1]
-
+    if (rsp->analyze) {
+        rsp->analysis.i_count += 1;
+        rsp->analysis.j_count += 1;
+    }
     rsp->pc = val;  // PC = return address
 }
 
@@ -107,6 +114,10 @@ void emu_jal (struct rv_state_st *rsp, uint32_t iw) {
     int64_t imm = sign_extend(immu21, 20);
     if(rd != 0){
         rsp->regs[rd] = rsp->pc + 4;
+    }
+    if (rsp->analyze) {
+            rsp->analysis.i_count += 1;
+            rsp->analysis.j_count += 1;
     }
     rsp->pc += imm;
 }
@@ -130,6 +141,10 @@ void emu_i_type (struct rv_state_st *rsp, uint32_t iw) {
     } else {
         unsupported("I-type funct3", funct3);
     }
+    if (rsp->analyze) {
+        rsp->analysis.i_count += 1;
+        rsp->analysis.ir_count += 1;
+    }
     rsp->pc += 4; // Next instruction
 }
 // 0b0000000 
@@ -149,6 +164,10 @@ void emu_64i_type (struct rv_state_st *rsp, uint32_t iw) {
         rsp->regs[rd] = res;
     } else {
         unsupported("64I-type funct3", funct3);
+    }
+    if (rsp->analyze) {
+        rsp->analysis.i_count += 1;
+        rsp->analysis.ir_count += 1;
     }
     rsp->pc += 4; // Next instruction
      
@@ -170,8 +189,16 @@ void emu_b_type (struct rv_state_st *rsp, uint32_t iw) {
         (funct3 == 0b001 && (rs1_val != rs2_val)) || //BNE
         (funct3 == 0b101 && (rs1_val >= rs2_val))) { //BGE
             rsp->pc += imm;
+            if (rsp->analyze) {
+                rsp->analysis.i_count += 1;
+                rsp->analysis.b_taken += 1;
+            }
     } else if (funct3 == 0b000 || funct3 == 0b100 || funct3 == 0b001 || funct3 == 0b101) {
         rsp->pc += 4; // Next instruction
+        if (rsp->analyze) {
+            rsp->analysis.i_count += 1;
+            rsp->analysis.b_not_taken += 1;
+        }
     } else {
         unsupported("B-type funct3", funct3);
     }
@@ -194,6 +221,10 @@ void emu_s_type (struct rv_state_st *rsp, uint32_t iw){
         *((uint32_t *) target_addr) = rsp->regs[rs2];
     } else {
         unsupported("S-type funct3", funct3);
+    }
+    if (rsp->analyze) {
+        rsp->analysis.i_count += 1;
+        rsp->analysis.st_count += 1;
     }
     rsp->pc += 4; // Next instruction
 
@@ -218,6 +249,10 @@ void emu_load (struct rv_state_st *rsp, uint32_t iw) {
         rsp->regs[rd] = value;
     } else{
         unsupported("I-type funct3", funct3);
+    }
+    if (rsp->analyze) {
+        rsp->analysis.i_count += 1;
+        rsp->analysis.ld_count += 1;
     }
     rsp->pc += 4; // Next instruction
 }
