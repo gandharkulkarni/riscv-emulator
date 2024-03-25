@@ -147,7 +147,6 @@ void emu_i_type (struct rv_state_st *rsp, uint32_t iw) {
     }
     rsp->pc += 4; // Next instruction
 }
-// 0b0000000 
 
 void emu_64i_type (struct rv_state_st *rsp, uint32_t iw) {
     uint32_t rd = rv_get_rd(iw);
@@ -258,8 +257,8 @@ void emu_load (struct rv_state_st *rsp, uint32_t iw) {
 }
 
 static void rv_one (struct rv_state_st *rsp) {
-    uint32_t iw  = *((uint32_t*) rsp->pc);
-    //iw = cache_lookup(&rsp->i_cache, (uint64_t) rsp->pc);
+    // uint32_t iw  = *((uint32_t*) rsp->pc);
+    uint32_t iw = cache_lookup(&rsp->i_cache, (uint64_t) rsp->pc);
 
     uint32_t opcode = iw & 0b1111111;
 #if DEBUG
