@@ -116,8 +116,8 @@ void emu_jal (struct rv_state_st *rsp, uint32_t iw) {
         rsp->regs[rd] = rsp->pc + 4;
     }
     if (rsp->analyze) {
-            rsp->analysis.i_count += 1;
-            rsp->analysis.j_count += 1;
+        rsp->analysis.i_count += 1;
+        rsp->analysis.j_count += 1;
     }
     rsp->pc += imm;
 }
